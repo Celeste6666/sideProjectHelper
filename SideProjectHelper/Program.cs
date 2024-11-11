@@ -8,16 +8,32 @@ using SideProjectHelper.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
+                       throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
 builder.Services.AddDefaultIdentity<User>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddRoles<IdentityRole>()  // add support for authorization roles
+    .AddRoles<IdentityRole>() // add support for authorization roles
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+
+var config = builder.Configuration;
+
+builder.Services.AddAuthentication()
+    .AddGoogle(options =>
+    {
+        options.ClientId = config["Authentication:Google:ClientId"];
+        options.ClientSecret = config["Authentication:Google:ClientSecret"];
+    }).AddGitHub(options =>
+    {
+        options.ClientId = config["Authentication:GitHub:ClientId"];
+        options.ClientSecret = config["Authentication:GitHub:ClientSecret"];
+    });
+
 
 var app = builder.Build();
 
