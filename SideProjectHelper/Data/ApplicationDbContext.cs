@@ -11,4 +11,14 @@ public class ApplicationDbContext : IdentityDbContext<User>
     {
     }
     public DbSet<Project> Project { get; set; }
+    
+    // protected override void OnModelCreating(ModelBuilder modelBuilder)
+    // {
+    //     modelBuilder.Entity<User>()
+    //         .HasNoKey()
+    //         .HasMany(e => e.Projects)
+    //         .WithOne(e => e.User)
+    //         .HasForeignKey("UserId")
+    //         .IsRequired();
+    // }
 }

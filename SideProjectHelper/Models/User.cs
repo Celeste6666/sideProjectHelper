@@ -5,5 +5,5 @@ namespace SideProjectHelper.Models;
 
 public class User : IdentityUser
 {
-   public List<Project>? Projects { get; } = [];
+   public List<Project>? Projects { get; set; }
 }

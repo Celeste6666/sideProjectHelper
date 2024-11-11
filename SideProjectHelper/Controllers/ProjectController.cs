@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -16,19 +17,23 @@ namespace SideProjectHelper.Controllers
     public class ProjectController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public ProjectController(ApplicationDbContext context)
+        public ProjectController(ApplicationDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: Project
+        [AllowAnonymous]
         public async Task<IActionResult> Index()
         {
             return View(await _context.Project.ToListAsync());
         }
 
         // GET: Project/Details/5
+        [AllowAnonymous]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -60,25 +65,25 @@ namespace SideProjectHelper.Controllers
         public async Task<IActionResult> Create([Bind("ProjectId,Title,Description")] Project project, IFormFile? Photo)
         {
             // TODO: change User according to current login user
-            // var user = _context.User.FirstOrDefault();
-            // project.User = user;
-            // ModelState["User"].ValidationState = ModelValidationState.Valid;
-            
-            
+            var user = _userManager.FindByNameAsync(User.Identity.Name);
+            project.User = user.Result;
+            ModelState["User"].ValidationState = ModelValidationState.Valid;
+
+
             if (ModelState.IsValid)
             {
-                
                 // check for photo & upload if exists, then capture new unique file name
                 if (Photo != null)
                 {
                     var fileName = UploadPhoto(Photo);
                     project.Photo = fileName;
                 }
-                
+
                 _context.Add(project);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
             return View(project);
         }
 
@@ -95,6 +100,7 @@ namespace SideProjectHelper.Controllers
             {
                 return NotFound();
             }
+
             return View(project);
         }
 
@@ -103,32 +109,41 @@ namespace SideProjectHelper.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("ProjectId,Title,Description")] Project project, IFormFile? Photo, string CurrentPhoto)
+        public async Task<IActionResult> Edit(int id, [Bind("ProjectId,Title,Description")] Project project,
+            IFormFile? Photo, string CurrentPhoto)
         {
             if (id != project.ProjectId)
             {
                 return NotFound();
             }
+            
+            
+            // check for photo & upload if exists, then capture new unique file name
+            if (Photo != null)
+            {
+                var fileName = UploadPhoto(Photo);
+                project.Photo = fileName;
+            }
+            else
+            {
+                // if there is a photo, project doesn't contain the filename string
+                project.Photo = CurrentPhoto;
+            }
+
             // TODO: change User according to current login user
-            // var user = _context.User.FirstOrDefault();
-            // project.User = user;
-            // ModelState["User"].ValidationState = ModelValidationState.Valid;
+             var currentUser = _userManager.FindByNameAsync(User.Identity.Name).Result;
+            project.User = currentUser;
+
+
+            
+             ModelState["User"].ValidationState = ModelValidationState.Valid;
+             ModelState["UserId"].ValidationState = ModelValidationState.Valid;
+             ModelState["CurrentPhoto"].ValidationState = ModelValidationState.Valid;
+            
             if (ModelState.IsValid)
             {
                 try
                 {
-                    // check for photo & upload if exists, then capture new unique file name
-                    if (Photo != null)
-                    {
-                        var fileName = UploadPhoto(Photo);
-                        project.Photo = fileName;
-                    }
-                    else
-                    {
-                        // if there is a photo, project doesn't contain the filename string
-                        project.Photo = CurrentPhoto;
-                    }
-
                     _context.Update(project);
                     await _context.SaveChangesAsync();
                 }
@@ -143,8 +158,10 @@ namespace SideProjectHelper.Controllers
                         throw;
                     }
                 }
+
                 return RedirectToAction(nameof(Index));
             }
+
             return View(project);
         }
 
@@ -185,7 +202,7 @@ namespace SideProjectHelper.Controllers
         {
             return _context.Project.Any(e => e.ProjectId == id);
         }
-        
+
         // reference
         // Richard Freeman - https://github.com/ifotn/ThreadHaven
         // https://sd.blackball.lv/en/articles/read/19650-file-upload-in-aspnet-core-6-detailed-guide
